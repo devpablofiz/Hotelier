@@ -13,8 +13,8 @@ public class TCPServer {
     private static ExecutorService threadPool = Executors.newFixedThreadPool(10);
     private static UserRegisterImpl userRegister;
     private static final String END_OF_RESPONSE = "END_OF_RESPONSE";
-    private static Map<Socket, String> loggedInUsers = new ConcurrentHashMap<>();
-    private static Map<String, Socket> userSockets = new ConcurrentHashMap<>();
+    private static final Map<Socket, String> loggedInUsers = new ConcurrentHashMap<>();
+    private static final Map<String, Socket> userSockets = new ConcurrentHashMap<>();
 
     public static void start(UserRegisterImpl userRegister) throws Exception {
         TCPServer.userRegister = userRegister;
@@ -50,23 +50,28 @@ public class TCPServer {
 
                     String cmd = parts[0];
                     String[] args = parts[1].replace(")", "").split(",");
-                    if (args.length != 2) {
-                        out.println("Invalid arguments format");
-                        out.println(END_OF_RESPONSE);
-                        continue;
-                    }
-
-                    String username = args[0];
-                    String password = args[1];
 
                     switch (cmd) {
                         case "login":
-                            handleLogin(out, username, password);
+                            if (args.length != 2) {
+                                out.println("Invalid arguments format, usage: login([username],[password])");
+                                out.println(END_OF_RESPONSE);
+                                continue;
+                            }
+                            //username=args[0], password=args[1]
+                            handleLogin(out, args[0], args[1]);
                             break;
                         case "logout":
-                            handleLogout(out,username);
+                            if (args.length != 1) {
+                                out.println("Invalid arguments format, usage: logout([username])");
+                                out.println(END_OF_RESPONSE);
+                                continue;
+                            }
+                            //username=args[0]
+                            handleLogout(out, args[0]);
+                            break;
                         case "other":
-                            handleOther(out, username, password);
+                            //handleOther(out, username, password);
                             break;
                         default:
                             out.println("Unknown command");
@@ -75,26 +80,16 @@ public class TCPServer {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-            } finally {
-                String username = loggedInUsers.remove(clientSocket);
-                if (username != null) {
-                    userSockets.remove(username);
-                }
-                try {
-                    clientSocket.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
             }
         }
 
         private void handleLogout(PrintWriter out, String username) {
-            if(!userSockets.containsKey(username)){
+            if (!userSockets.containsKey(username)) {
                 out.println("User is not logged in");
                 out.println(END_OF_RESPONSE);
                 return;
             }
-            if(!userSockets.get(username).equals(clientSocket)){
+            if (!userSockets.get(username).equals(clientSocket)) {
                 out.println("Socket not authenticated for this user");
                 out.println(END_OF_RESPONSE);
                 return;
@@ -103,7 +98,7 @@ public class TCPServer {
             if (loggedUsername != null) {
                 userSockets.remove(loggedUsername);
             }
-            out.println("Logout successful");
+            out.println("Logout successful!");
             out.println(END_OF_RESPONSE);
         }
 

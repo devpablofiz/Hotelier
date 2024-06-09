@@ -5,7 +5,7 @@ import java.util.Map;
 
 public class UserRegisterImpl extends UnicastRemoteObject implements UserRegister {
     private static final long serialVersionUID = 1L;
-    private Map<String, User> users;
+    private final Map<String, User> users;
 
     protected UserRegisterImpl() throws RemoteException {
         super();

@@ -17,16 +17,23 @@ public class ClientMain {
             userRegister = (UserRegister) Naming.lookup("rmi://localhost/UserRegister");
 
             Scanner scanner = new Scanner(System.in);
-            while (true) {
-                System.out.print("> ");
-                String input = scanner.nextLine();
 
-                if (input.startsWith("register(")) {
-                    handleRegister(input);
-                } else if (input.startsWith("login(") || input.startsWith("logout(")) {
-                    handleTCPRequest(input);
-                } else {
-                    System.out.println("Unknown command");
+            // Establish a single TCP connection
+            try (Socket socket = new Socket(TCP_HOST, TCP_PORT);
+                 PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+
+                while (true) {
+                    System.out.print("> ");
+                    String input = scanner.nextLine();
+
+                    if (input.startsWith("register(")) {
+                        handleRegister(input);
+                    } else if (input.startsWith("login(") || input.startsWith("logout(")) {
+                        handleTCPRequest(input, out, in);
+                    } else {
+                        System.out.println("Unknown command");
+                    }
                 }
             }
         } catch (Exception e) {
@@ -54,11 +61,8 @@ public class ClientMain {
         }
     }
 
-    private static void handleTCPRequest(String input) {
-        try (Socket socket = new Socket(TCP_HOST, TCP_PORT);
-             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
-
+    private static void handleTCPRequest(String input, PrintWriter out, BufferedReader in) {
+        try {
             out.println(input);
             String response;
             while ((response = in.readLine()) != null) {

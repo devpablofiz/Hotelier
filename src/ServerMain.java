@@ -9,10 +9,12 @@ public class ServerMain {
             Naming.rebind("UserRegister", userRegister);
             System.out.println("UserRegister Server is ready.");
 
+            HotelManager hotelManager = new HotelManager("hotels.json");
+
             // Start TCP server for various functions
             new Thread(() -> {
                 try {
-                    TCPServer.start(userRegister);
+                    TCPServer.start(userRegister, hotelManager);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }

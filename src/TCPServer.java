@@ -3,6 +3,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -12,12 +13,14 @@ public class TCPServer {
     private static final int PORT = 12345;
     private static ExecutorService threadPool = Executors.newFixedThreadPool(10);
     private static UserRegisterImpl userRegister;
+    private static HotelManager hotelManager;
     private static final String END_OF_RESPONSE = "END_OF_RESPONSE";
     private static final Map<Socket, String> loggedInUsers = new ConcurrentHashMap<>();
     private static final Map<String, Socket> userSockets = new ConcurrentHashMap<>();
 
-    public static void start(UserRegisterImpl userRegister) throws Exception {
+    public static void start(UserRegisterImpl userRegister, HotelManager hotelManager) throws Exception {
         TCPServer.userRegister = userRegister;
+        TCPServer.hotelManager = hotelManager;
         ServerSocket serverSocket = new ServerSocket(PORT);
         System.out.println("TCP Server is ready on port " + PORT);
 
@@ -70,8 +73,34 @@ public class TCPServer {
                             //username=args[0]
                             handleLogout(out, args[0]);
                             break;
-                        case "other":
-                            //handleOther(out, username, password);
+                        case "searchHotel":
+                            if (args.length != 2) {
+                                out.println("Invalid arguments format, usage: searchHotel([hotelName],[cityName])");
+                                out.println(END_OF_RESPONSE);
+                                continue;
+                            }
+                            handleSearchHotel(out, args[0], args[1]);
+                        case "searchAllHotels":
+                            if (args.length != 1) {
+                                out.println("Invalid arguments format, usage: searchAllHotels([cityName])");
+                                out.println(END_OF_RESPONSE);
+                                continue;
+                            }
+                            handleSearchAllHotels(out, args[0]);
+                        case "insertReview":
+                            if (args.length != 7) {
+                                out.println("Invalid arguments format, usage: " +
+                                        "insertReview([hotelName],[cityName],[globalScore]" +
+                                        ",[positionScore],[cleaningScore],[serviceScore],[priceScore])");
+                                out.println(END_OF_RESPONSE);
+                                continue;
+                            }
+                            int globalScore = Integer.parseInt(args[2]);
+                            int positionScore = Integer.parseInt(args[3]);
+                            int cleaningScore = Integer.parseInt(args[4]);
+                            int serviceScore = Integer.parseInt(args[5]);
+                            int priceScore = Integer.parseInt(args[6]);
+                            handleInsertReview(out, args[0], args[1], globalScore, positionScore, cleaningScore, serviceScore, priceScore);
                             break;
                         default:
                             out.println("Unknown command");
@@ -81,6 +110,46 @@ public class TCPServer {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
+
+        private void handleInsertReview(PrintWriter out, String hotelName, String city, int globalScore, int positionScore, int cleaningScore, int serviceScore, int priceScore) {
+            if (!loggedInUsers.containsKey(clientSocket)) {
+                out.println("User needs to be logged in to insert a review");
+                out.println(END_OF_RESPONSE);
+                return;
+            }
+            if (hotelManager.submitReview(hotelName, city, globalScore, positionScore, cleaningScore, serviceScore, priceScore)) {
+                out.println("Review added successfully");
+                out.println(END_OF_RESPONSE);
+            } else {
+                out.println("Hotel " + hotelName + " not found in " + city + "!");
+                out.println(END_OF_RESPONSE);
+            }
+            ;
+        }
+
+        private void handleSearchAllHotels(PrintWriter out, String city) {
+            List<Hotel> hotels = hotelManager.searchHotelsByCity(city);
+            if (hotels.isEmpty()) {
+                out.println("No hotel found");
+                out.println(END_OF_RESPONSE);
+                return;
+            }
+            for (Hotel hotel : hotels) {
+                out.println(hotel);
+            }
+            out.println(END_OF_RESPONSE);
+        }
+
+        private void handleSearchHotel(PrintWriter out, String hotelName, String city) {
+            Hotel hotel = hotelManager.searchHotelByNameAndCity(hotelName, city);
+            if (hotel == null) {
+                out.println("No hotel found");
+                out.println(END_OF_RESPONSE);
+                return;
+            }
+            out.println(hotel);
+            out.println(END_OF_RESPONSE);
         }
 
         private void handleLogout(PrintWriter out, String username) {

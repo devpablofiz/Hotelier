@@ -77,19 +77,19 @@ public class Hotel {
 
     @Override
     public String toString() {
-        return "Hotel{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", description='" + description + '\'' +
-                ", city='" + city + '\'' +
-                ", phone='" + phone + '\'' +
-                ", services=" + services +
-                ", rate=" + rate +
-                ", posizione=" + posizione +
-                ", pulizia=" + pulizia +
-                ", servizio=" + servizio +
-                ", prezzo=" + prezzo +
-                ", reviewCount=" + reviewCount +
-                '}';
+        return name + '\n' +
+                "Descrizione: " + description + '\n' +
+                "Città: " + city + '\n' +
+                "Telefono: " + phone + '\n' +
+                "Servizi: " + services + '\n' +
+                "Posizione nella classifica locale: +++TODO+++ \n" +
+                "Numero recensioni: " + reviewCount + '\n' +
+                "Punteggio complessivo: " + rate + "/5.0 \n" +
+                "Punteggi di categoria:" +
+                "\n+Posizione: " + posizione + "/5.0" +
+                "\n+Pulizia: " + pulizia + "/5.0" +
+                "\n+Servizio: " + servizio + "/5.0" +
+                "\n+Prezzo: " + prezzo + "/5.0\n" +
+                "==============================";
     }
 }

@@ -29,7 +29,9 @@ public class ClientMain {
 
                     if (input.startsWith("register(")) {
                         handleRegister(input);
-                    } else if (input.startsWith("login(") || input.startsWith("logout(")) {
+                    } else if (input.startsWith("login(") || input.startsWith("logout(") ||
+                            input.startsWith("searchHotel(") || input.startsWith("searchAllHotels(") ||
+                            input.startsWith("insertReview(")) {
                         handleTCPRequest(input, out, in);
                     } else {
                         System.out.println("Unknown command");

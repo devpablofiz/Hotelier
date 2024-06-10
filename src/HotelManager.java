@@ -16,7 +16,8 @@ public class HotelManager {
 
     private void loadHotels(String jsonFilePath) throws IOException {
         Gson gson = new Gson();
-        Type hotelListType = new TypeToken<List<Hotel>>() {}.getType();
+        Type hotelListType = new TypeToken<List<Hotel>>() {
+        }.getType();
         try (FileReader reader = new FileReader(jsonFilePath)) {
             hotels = gson.fromJson(reader, hotelListType);
         }
@@ -35,12 +36,13 @@ public class HotelManager {
         return null;
     }
 
-    public void submitReview(int hotelId, double newRate, int newPosizione, int newPulizia, int newServizio, int newPrezzo) {
-        Hotel hotel = getHotelById(hotelId);
+    public boolean submitReview(String name, String city, double newRate, int newPosizione, int newPulizia, int newServizio, int newPrezzo) {
+        Hotel hotel = searchHotelByNameAndCity(name, city);
         if (hotel != null) {
             hotel.submitReview(newRate, newPosizione, newPulizia, newServizio, newPrezzo);
+            return true;
         } else {
-            System.out.println("Hotel with ID " + hotelId + " not found.");
+            return false;
         }
     }
 
@@ -68,26 +70,5 @@ public class HotelManager {
         return "HotelManager{" +
                 "hotels=" + hotels +
                 '}';
-    }
-
-    public static void main(String[] args) {
-        try {
-            HotelManager hotelManager = new HotelManager("hotels.json");
-            System.out.println(hotelManager);
-
-            // Example of searching for a hotel by name and city
-            Hotel hotel = hotelManager.searchHotelByNameAndCity("Hotel Genova 5", "Genova");
-            System.out.println("Search by name and city: " + hotel);
-
-            // Example of listing all hotels in a city
-            List<Hotel> cityHotels = hotelManager.searchHotelsByCity("Genova");
-            System.out.println("Hotels in Genova: " + cityHotels);
-
-            // Example of submitting a review
-            hotelManager.submitReview(25, 4.5, 4, 5, 4, 5);
-            System.out.println(hotelManager.getHotelById(25));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 }

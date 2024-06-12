@@ -1,3 +1,5 @@
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 public class Hotel {
@@ -13,6 +15,7 @@ public class Hotel {
     private double servizio;
     private double prezzo;
     private int reviewCount;
+    private List<Review> reviews;
 
     public int getId() {
         return id;
@@ -66,13 +69,39 @@ public class Hotel {
         return reviewCount;
     }
 
-    public void submitReview(double newRate, int newPosizione, int newPulizia, int newServizio, int newPrezzo) {
-        this.rate = (this.rate * this.reviewCount + newRate) / (this.reviewCount + 1);
-        this.posizione = (this.posizione * this.reviewCount + newPosizione) / (this.reviewCount + 1);
-        this.pulizia = (this.pulizia * this.reviewCount + newPulizia) / (this.reviewCount + 1);
-        this.servizio = (this.servizio * this.reviewCount + newServizio) / (this.reviewCount + 1);
-        this.prezzo = (this.prezzo * this.reviewCount + newPrezzo) / (this.reviewCount + 1);
+    public void submitReview(double rate, int posizione, int pulizia, int servizio, int prezzo) {
+        //update average values
+        this.rate = (this.rate * this.reviewCount + rate) / (this.reviewCount + 1);
+        this.posizione = (this.posizione * this.reviewCount + posizione) / (this.reviewCount + 1);
+        this.pulizia = (this.pulizia * this.reviewCount + pulizia) / (this.reviewCount + 1);
+        this.servizio = (this.servizio * this.reviewCount + servizio) / (this.reviewCount + 1);
+        this.prezzo = (this.prezzo * this.reviewCount + prezzo) / (this.reviewCount + 1);
+        //save review for local score calculations
+        this.reviews.add(new Review(rate + posizione + pulizia + servizio + prezzo, LocalDate.now()));
         this.reviewCount++;
+    }
+
+    public double getLocalScore() {
+        double totalScore = 0;
+        double weightSum = 0;
+        LocalDate now = LocalDate.now();
+
+        for (Review review : reviews) {
+            long daysOld = ChronoUnit.DAYS.between(review.getDate(), now);
+            // recent reviews -> higher weight
+            double weight = 1.0 / (1 + daysOld);
+            totalScore += review.getScore() * weight;
+            weightSum += weight;
+        }
+
+        double averageWeightedScore = (weightSum != 0) ? totalScore / weightSum : 0;
+        // logarithmic factor to account for review count
+        double reviewFactor = Math.log(1 + reviewCount);
+
+        if (averageWeightedScore > 0) {
+            System.out.println(name + ": " + averageWeightedScore);
+        }
+        return averageWeightedScore * reviewFactor;
     }
 
     @Override
@@ -82,7 +111,6 @@ public class Hotel {
                 "Città: " + city + '\n' +
                 "Telefono: " + phone + '\n' +
                 "Servizi: " + services + '\n' +
-                "Posizione nella classifica locale: +++TODO+++ \n" +
                 "Numero recensioni: " + reviewCount + '\n' +
                 "Punteggio complessivo: " + rate + "/5.0 \n" +
                 "Punteggi di categoria:" +

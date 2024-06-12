@@ -125,7 +125,6 @@ public class TCPServer {
                 out.println("Hotel " + hotelName + " not found in " + city + "!");
                 out.println(END_OF_RESPONSE);
             }
-            ;
         }
 
         private void handleSearchAllHotels(PrintWriter out, String city) {
@@ -135,8 +134,11 @@ public class TCPServer {
                 out.println(END_OF_RESPONSE);
                 return;
             }
+            int i = 1;
             for (Hotel hotel : hotels) {
+                out.println("Local Rank " + i + "/" + hotels.size());
                 out.println(hotel);
+                i++;
             }
             out.println(END_OF_RESPONSE);
         }

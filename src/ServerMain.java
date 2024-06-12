@@ -9,8 +9,9 @@ public class ServerMain {
             Naming.rebind("UserRegister", userRegister);
             System.out.println("UserRegister Server is ready.");
 
-            HotelManager hotelManager = new HotelManager("hotels.json");
-
+            HotelManager hotelManager = new HotelManager("updated_hotels.json");
+            hotelManager.schedulePeriodicSave(30 * 1000);
+            hotelManager.schedulePeriodicRankingUpdate(30 * 1000);
             // Start TCP server for various functions
             new Thread(() -> {
                 try {

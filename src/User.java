@@ -17,12 +17,15 @@ public class User {
         return this.password.equals(password);
     }
 
-    public int getReviewsCounter() {
-        return reviewsCounter;
-    }
+//    public int getReviewsCounter() {
+//        return reviewsCounter;
+//    }
 
     public void incrementReviewCounter() {
         this.reviewsCounter++;
     }
 
+    public String getBadge() {
+        
+    }
 }

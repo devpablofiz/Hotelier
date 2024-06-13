@@ -101,7 +101,13 @@ public class TCPServer {
                             int serviceScore = Integer.parseInt(args[5]);
                             int priceScore = Integer.parseInt(args[6]);
                             handleInsertReview(out, args[0], args[1], globalScore, positionScore, cleaningScore, serviceScore, priceScore);
-                            break;
+                        case "showMyBadges":
+                            if (args.length != 0) {
+                                out.println("Invalid arguments format, usage:" +
+                                        "showMyBadges()");
+                                out.println(END_OF_RESPONSE);
+                            }
+                            handleShowMyBadges();
                         default:
                             out.println("Unknown command");
                             out.println(END_OF_RESPONSE);
@@ -112,13 +118,20 @@ public class TCPServer {
             }
         }
 
+        private void handleShowMyBadges() {
+            String badge = userRegister.getUser(loggedInUsers.get(clientSocket)).getBadge();
+
+        }
+
         private void handleInsertReview(PrintWriter out, String hotelName, String city, int globalScore, int positionScore, int cleaningScore, int serviceScore, int priceScore) {
-            if (!loggedInUsers.containsKey(clientSocket)) {
+            String username = loggedInUsers.get(clientSocket);
+            if (username == null) {
                 out.println("User needs to be logged in to insert a review");
                 out.println(END_OF_RESPONSE);
                 return;
             }
             if (hotelManager.submitReview(hotelName, city, globalScore, positionScore, cleaningScore, serviceScore, priceScore)) {
+                userRegister.getUser(username).incrementReviewCounter();
                 out.println("Review added successfully");
                 out.println(END_OF_RESPONSE);
             } else {

@@ -77,30 +77,28 @@ public class Hotel {
         this.servizio = (this.servizio * this.reviewCount + servizio) / (this.reviewCount + 1);
         this.prezzo = (this.prezzo * this.reviewCount + prezzo) / (this.reviewCount + 1);
         //save review for local score calculations
-        this.reviews.add(new Review(rate + posizione + pulizia + servizio + prezzo, LocalDate.now()));
+        this.reviews.add(new Review(rate + (posizione + pulizia + servizio + prezzo) / 2.0, LocalDate.now()));
         this.reviewCount++;
     }
 
     public double getLocalScore() {
         double totalScore = 0;
-        double weightSum = 0;
+        double weightSum = 1;
         LocalDate now = LocalDate.now();
 
         for (Review review : reviews) {
-            long daysOld = ChronoUnit.DAYS.between(review.getDate(), now);
+            long monthsOld = ChronoUnit.MONTHS.between(review.getDate(), now);
             // recent reviews -> higher weight
-            double weight = 1.0 / (1 + daysOld);
+            //double weight = 1.0 / (1 + daysOld);
+            double weight = 1.2 - Math.tanh(monthsOld + 0.2); //flattens after fourth month
             totalScore += review.getScore() * weight;
+            System.out.println(name + "- weight: " + weight);
             weightSum += weight;
         }
 
         double averageWeightedScore = (weightSum != 0) ? totalScore / weightSum : 0;
         // logarithmic factor to account for review count
         double reviewFactor = Math.log(1 + reviewCount);
-
-        if (averageWeightedScore > 0) {
-            System.out.println(name + ": " + averageWeightedScore);
-        }
         return averageWeightedScore * reviewFactor;
     }
 

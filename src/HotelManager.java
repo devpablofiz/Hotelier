@@ -14,6 +14,8 @@ public class HotelManager {
     public HotelManager(String jsonFilePath) throws IOException {
         loadHotels(jsonFilePath);
         updateRankings();
+        schedulePeriodicSave(30 * 1000);
+        schedulePeriodicRankingUpdate(30 * 1000);
     }
 
     private void loadHotels(String jsonFilePath) throws IOException {
@@ -38,10 +40,10 @@ public class HotelManager {
         return null;
     }
 
-    public boolean submitReview(String name, String city, double newRate, int newPosizione, int newPulizia, int newServizio, int newPrezzo) {
+    public boolean submitReview(String name, String city, double rate, int posizione, int pulizia, int servizio, int prezzo) {
         Hotel hotel = searchHotelByNameAndCity(name, city);
         if (hotel != null) {
-            hotel.submitReview(newRate, newPosizione, newPulizia, newServizio, newPrezzo);
+            hotel.submitReview(rate, posizione, pulizia, servizio, prezzo);
             return true;
         } else {
             return false;

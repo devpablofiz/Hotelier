@@ -27,18 +27,17 @@ public class UserRegisterImpl extends UnicastRemoteObject implements UserRegiste
     }
 
     @Override
-    public synchronized String registerUser(String username, String password) throws RemoteException {
-        if (users.containsKey(username)) {
+    public String registerUser(String username, String password) throws RemoteException {
+        User oldUser = users.putIfAbsent(username, new User(username, password, 0));
+        if (oldUser != null) {
             return "Username already exists!";
         }
-        users.put(username, new User(username, password, 0));
         return "User registered successfully!";
     }
 
-    public synchronized User getUser(String username) {
+    public User getUser(String username) {
         return users.get(username);
     }
-
 
     public synchronized String validateUser(String username, String password) {
         if (!users.containsKey(username)) {

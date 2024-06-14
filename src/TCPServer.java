@@ -215,7 +215,7 @@ public class TCPServer {
             out.println(END_OF_RESPONSE);
         }
 
-        private void handleLogin(PrintWriter out, String username, String password) {
+        private synchronized void handleLogin(PrintWriter out, String username, String password) {
             if (userSockets.containsKey(username)) {
                 out.println("User already logged in");
             } else {

@@ -69,7 +69,7 @@ public class Hotel {
         return reviewCount;
     }
 
-    public void submitReview(double rate, int posizione, int pulizia, int servizio, int prezzo) {
+    public synchronized void submitReview(double rate, int posizione, int pulizia, int servizio, int prezzo) {
         //update average values
         this.rate = (this.rate * this.reviewCount + rate) / (this.reviewCount + 1);
         this.posizione = (this.posizione * this.reviewCount + posizione) / (this.reviewCount + 1);
@@ -90,7 +90,7 @@ public class Hotel {
             long monthsOld = ChronoUnit.MONTHS.between(review.getDate(), now);
             // recent reviews -> higher weight
             //double weight = 1.0 / (1 + daysOld);
-            double weight = 1.2 - Math.tanh(monthsOld + 0.2); //flattens after fourth month
+            double weight = 1.2 - Math.tanh(monthsOld + 0.2);
             totalScore += review.getScore() * weight;
             //System.out.println(name + "- weight: " + weight);
             weightSum += weight;

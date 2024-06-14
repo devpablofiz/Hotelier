@@ -31,7 +31,7 @@ public class ClientMain {
                         handleRegister(input);
                     } else if (input.startsWith("login(") || input.startsWith("logout(") ||
                             input.startsWith("searchHotel(") || input.startsWith("searchAllHotels(") ||
-                            input.startsWith("insertReview(")) {
+                            input.startsWith("insertReview(") || input.startsWith("showMyBadges(")) {
                         handleTCPRequest(input, out, in);
                     } else {
                         System.out.println("Unknown command");

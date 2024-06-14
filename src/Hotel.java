@@ -92,7 +92,7 @@ public class Hotel {
             //double weight = 1.0 / (1 + daysOld);
             double weight = 1.2 - Math.tanh(monthsOld + 0.2); //flattens after fourth month
             totalScore += review.getScore() * weight;
-            System.out.println(name + "- weight: " + weight);
+            //System.out.println(name + "- weight: " + weight);
             weightSum += weight;
         }
 

@@ -11,7 +11,7 @@ import java.util.concurrent.Executors;
 
 public class TCPServer {
     private static final int PORT = 12345;
-    private static ExecutorService threadPool = Executors.newFixedThreadPool(10);
+    private static final ExecutorService threadPool = Executors.newFixedThreadPool(10);
     private static UserRegisterImpl userRegister;
     private static HotelManager hotelManager;
     private static final String END_OF_RESPONSE = "END_OF_RESPONSE";
@@ -61,7 +61,6 @@ public class TCPServer {
                                 out.println(END_OF_RESPONSE);
                                 continue;
                             }
-                            //username=args[0], password=args[1]
                             handleLogin(out, args[0], args[1]);
                             break;
                         case "logout":
@@ -70,7 +69,6 @@ public class TCPServer {
                                 out.println(END_OF_RESPONSE);
                                 continue;
                             }
-                            //username=args[0]
                             handleLogout(out, args[0]);
                             break;
                         case "searchHotel":
@@ -80,6 +78,7 @@ public class TCPServer {
                                 continue;
                             }
                             handleSearchHotel(out, args[0], args[1]);
+                            break;
                         case "searchAllHotels":
                             if (args.length != 1) {
                                 out.println("Invalid arguments format, usage: searchAllHotels([cityName])");
@@ -87,6 +86,7 @@ public class TCPServer {
                                 continue;
                             }
                             handleSearchAllHotels(out, args[0]);
+                            break;
                         case "insertReview":
                             if (args.length != 7) {
                                 out.println("Invalid arguments format, usage: " +
@@ -101,26 +101,55 @@ public class TCPServer {
                             int serviceScore = Integer.parseInt(args[5]);
                             int priceScore = Integer.parseInt(args[6]);
                             handleInsertReview(out, args[0], args[1], globalScore, positionScore, cleaningScore, serviceScore, priceScore);
+                            break;
                         case "showMyBadges":
-                            if (args.length != 0) {
-                                out.println("Invalid arguments format, usage:" +
-                                        "showMyBadges()");
+                            if (args.length != 1 || !args[0].isEmpty()) {
+                                out.println("Invalid arguments format, usage: showMyBadges()");
                                 out.println(END_OF_RESPONSE);
+                                continue;
                             }
-                            handleShowMyBadges();
+                            handleShowMyBadges(out);
+                            break;
                         default:
                             out.println("Unknown command");
                             out.println(END_OF_RESPONSE);
+                            break;
                     }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+            } finally {
+                cleanup();
             }
         }
 
-        private void handleShowMyBadges() {
-            String badge = userRegister.getUser(loggedInUsers.get(clientSocket)).getBadge();
+        private void cleanup() {
+            try {
+                clientSocket.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            String username = loggedInUsers.remove(clientSocket);
+            if (username != null) {
+                userSockets.remove(username);
+            }
+        }
 
+        private void handleShowMyBadges(PrintWriter out) {
+            String username = loggedInUsers.get(clientSocket);
+            if (username == null) {
+                out.println("User needs to be logged in to request badges");
+                out.println(END_OF_RESPONSE);
+                return;
+            }
+            String badge = userRegister.getUser(username).getBadge();
+            if (badge == null) {
+                out.println("Submit at least one review to start collecting badges");
+                out.println(END_OF_RESPONSE);
+                return;
+            }
+            out.println(badge);
+            out.println(END_OF_RESPONSE);
         }
 
         private void handleInsertReview(PrintWriter out, String hotelName, String city, int globalScore, int positionScore, int cleaningScore, int serviceScore, int priceScore) {
@@ -196,16 +225,6 @@ public class TCPServer {
                     userSockets.put(username, clientSocket);
                 }
                 out.println(result);
-            }
-            out.println(END_OF_RESPONSE);
-        }
-
-        private void handleOther(PrintWriter out, String username, String password) {
-            if (loggedInUsers.containsKey(clientSocket) && loggedInUsers.get(clientSocket).equals(username)) {
-                // Process other command
-                out.println("Processing other command for " + username);
-            } else {
-                out.println("Unauthorized");
             }
             out.println(END_OF_RESPONSE);
         }

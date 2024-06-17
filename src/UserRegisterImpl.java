@@ -1,4 +1,3 @@
-
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -10,20 +9,23 @@ import java.nio.file.Paths;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UserRegisterImpl extends UnicastRemoteObject implements UserRegister {
     private static final long serialVersionUID = 1L;
-    private static final String JSON_FILE_PATH = "users.json";
+    private final String jsonFilePath;
     private final Map<String, User> users;
 
-    protected UserRegisterImpl() throws RemoteException {
+    protected UserRegisterImpl(Properties properties) throws RemoteException {
         super();
-        users = new ConcurrentHashMap<>();
+        this.jsonFilePath = properties.getProperty("json.file.path", "users.json");
+        this.users = new ConcurrentHashMap<>();
         loadUsersFromJson();
-        schedulePeriodicSave(30 * 1000); // Save every 30 secs
+        long savePeriod = Long.parseLong(properties.getProperty("save.period", "30000")); // Default to 30 secs
+        schedulePeriodicSave(savePeriod);
     }
 
     @Override
@@ -49,14 +51,10 @@ public class UserRegisterImpl extends UnicastRemoteObject implements UserRegiste
         return "Login successful!";
     }
 
-//    public synchronized boolean isUserValid(String username, String password) {
-//        return users.containsKey(username) && users.get(username).validatePassword(password);
-//    }
-
     // Method to save users to JSON file
     private synchronized void saveUsersToJson() {
         System.out.println("Saving user data to disk...");
-        try (FileWriter writer = new FileWriter(JSON_FILE_PATH)) {
+        try (FileWriter writer = new FileWriter(jsonFilePath)) {
             Gson gson = new Gson();
             gson.toJson(users, writer);
             System.out.println("User data saved!");
@@ -69,7 +67,7 @@ public class UserRegisterImpl extends UnicastRemoteObject implements UserRegiste
     // Method to load users from JSON file
     private synchronized void loadUsersFromJson() {
         try {
-            String json = new String(Files.readAllBytes(Paths.get(JSON_FILE_PATH)));
+            String json = new String(Files.readAllBytes(Paths.get(jsonFilePath)));
             Gson gson = new Gson();
             Type type = new TypeToken<Map<String, User>>() {
             }.getType();

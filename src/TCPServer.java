@@ -10,7 +10,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class TCPServer {
-    private static final int PORT = 12345;
     private static final ExecutorService threadPool = Executors.newFixedThreadPool(10);
     private static UserRegisterImpl userRegister;
     private static HotelManager hotelManager;
@@ -18,11 +17,12 @@ public class TCPServer {
     private static final Map<Socket, String> loggedInUsers = new ConcurrentHashMap<>();
     private static final Map<String, Socket> userSockets = new ConcurrentHashMap<>();
 
-    public static void start(UserRegisterImpl userRegister, HotelManager hotelManager) throws Exception {
+    public static void start(UserRegisterImpl userRegister, HotelManager hotelManager, int tcpPort) throws Exception {
         TCPServer.userRegister = userRegister;
         TCPServer.hotelManager = hotelManager;
-        ServerSocket serverSocket = new ServerSocket(PORT);
-        System.out.println("TCP Server is ready on port " + PORT);
+
+        ServerSocket serverSocket = new ServerSocket(tcpPort);
+        System.out.println("TCP Server is ready on port " + tcpPort);
 
         while (true) {
             Socket clientSocket = serverSocket.accept();

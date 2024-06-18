@@ -48,17 +48,4 @@ public class MulticastReceiver {
         }
         socket.close();
     }
-
-    public static void main(String[] args) {
-        MulticastReceiver receiver = new MulticastReceiver();
-        receiver.startListening();
-
-        // Example: Run the receiver for 1 minute and then stop
-        try {
-            Thread.sleep(60000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        receiver.stopListening();
-    }
 }

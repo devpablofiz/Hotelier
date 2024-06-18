@@ -6,10 +6,8 @@ import java.util.Properties;
 
 public class ServerMain {
     private static Properties properties;
-
     public static void main(String[] args) {
         loadProperties();
-
         try {
             int rmiPort = Integer.parseInt(properties.getProperty("rmi.port"));
             LocateRegistry.createRegistry(rmiPort);
@@ -19,8 +17,7 @@ public class ServerMain {
 
             RankingUpdateManagerImpl rankingUpdateManager = new RankingUpdateManagerImpl();
 
-            String jsonFilePath = "updated_hotels.json";
-            HotelManager hotelManager = new HotelManager(jsonFilePath, rankingUpdateManager, properties);
+            HotelManager hotelManager = new HotelManager(rankingUpdateManager, properties);
 
             // Start TCP server for various functions
             new Thread(() -> {

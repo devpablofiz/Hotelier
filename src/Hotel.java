@@ -76,7 +76,7 @@ public class Hotel {
         this.pulizia = (this.pulizia * this.reviewCount + pulizia) / (this.reviewCount + 1);
         this.servizio = (this.servizio * this.reviewCount + servizio) / (this.reviewCount + 1);
         this.prezzo = (this.prezzo * this.reviewCount + prezzo) / (this.reviewCount + 1);
-        //save review for local score calculations
+        //save review for local score calculations. general score is valued over categories (0.5x)
         this.reviews.add(new Review(rate + (posizione + pulizia + servizio + prezzo) / 2.0, LocalDate.now()));
         this.reviewCount++;
     }

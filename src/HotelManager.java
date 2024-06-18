@@ -13,17 +13,17 @@ import java.util.*;
 
 public class HotelManager {
     private List<Hotel> hotels;
-    private Map<String, List<Hotel>> rankedHotelsByCity;
+    private final Map<String, List<Hotel>> rankedHotelsByCity;
     private final RankingUpdateManagerImpl rankingUpdateManager;
     private final String multicastAddress;
     private final int multicastPort;
 
-    public HotelManager(String jsonFilePath, RankingUpdateManagerImpl rankingUpdateManager, Properties properties) throws IOException {
+    public HotelManager(RankingUpdateManagerImpl rankingUpdateManager, Properties properties) throws IOException {
         this.rankingUpdateManager = rankingUpdateManager;
         this.rankedHotelsByCity = new TreeMap<>();
         this.multicastAddress = properties.getProperty("multicast.ip");
         this.multicastPort = Integer.parseInt(properties.getProperty("multicast.port"));
-        loadHotels(jsonFilePath);
+        loadHotels(properties.getProperty("hotels.json.file.path"));
         updateRankings();
         long savePeriod = Long.parseLong(properties.getProperty("save.period"));
         long rankingUpdatePeriod = Long.parseLong(properties.getProperty("ranking.update.period"));
@@ -42,20 +42,6 @@ public class HotelManager {
             }
         }
     }
-
-    public List<Hotel> getHotels() {
-        return hotels;
-    }
-
-    public Hotel getHotelById(int id) {
-        for (Hotel hotel : hotels) {
-            if (hotel.getId() == id) {
-                return hotel;
-            }
-        }
-        return null;
-    }
-
     public boolean submitReview(String name, String city, double rate, int posizione, int pulizia, int servizio, int prezzo) {
         Hotel hotel = searchHotelByNameAndCity(name, city);
         if (hotel != null) {

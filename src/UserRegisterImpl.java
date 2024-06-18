@@ -15,16 +15,15 @@ import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UserRegisterImpl extends UnicastRemoteObject implements UserRegister {
-    private static final long serialVersionUID = 1L;
     private final String jsonFilePath;
     private final Map<String, User> users;
 
     protected UserRegisterImpl(Properties properties) throws RemoteException {
         super();
-        this.jsonFilePath = properties.getProperty("json.file.path", "users.json");
+        this.jsonFilePath = properties.getProperty("users.json.file.path");
         this.users = new ConcurrentHashMap<>();
         loadUsersFromJson();
-        long savePeriod = Long.parseLong(properties.getProperty("save.period", "30000")); // Default to 30 secs
+        long savePeriod = Long.parseLong(properties.getProperty("save.period")); // Default to 30 secs
         schedulePeriodicSave(savePeriod);
     }
 

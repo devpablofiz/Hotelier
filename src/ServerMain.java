@@ -6,6 +6,7 @@ import java.util.Properties;
 
 public class ServerMain {
     private static Properties properties;
+
     public static void main(String[] args) {
         loadProperties();
         try {
@@ -16,6 +17,8 @@ public class ServerMain {
             System.out.println("UserRegister Server is ready.");
 
             RankingUpdateManagerImpl rankingUpdateManager = new RankingUpdateManagerImpl();
+            Naming.rebind("rmi://localhost:" + rmiPort + "/RankingUpdateManager", rankingUpdateManager);
+            System.out.println("RankingUpdateManager Server is ready.");
 
             HotelManager hotelManager = new HotelManager(rankingUpdateManager, properties);
 

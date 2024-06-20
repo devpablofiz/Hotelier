@@ -10,6 +10,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.rmi.RemoteException;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class HotelManager {
     private List<Hotel> hotels;
@@ -17,6 +18,9 @@ public class HotelManager {
     private final RankingUpdateManagerImpl rankingUpdateManager;
     private final String multicastAddress;
     private final int multicastPort;
+
+    private final ReentrantReadWriteLock hotelsLock = new ReentrantReadWriteLock();
+    private final ReentrantReadWriteLock rankedHotelsByCityLock = new ReentrantReadWriteLock();
 
     public HotelManager(RankingUpdateManagerImpl rankingUpdateManager, Properties properties) throws IOException {
         this.rankingUpdateManager = rankingUpdateManager;
@@ -36,43 +40,66 @@ public class HotelManager {
         Type hotelListType = new TypeToken<List<Hotel>>() {
         }.getType();
         try (FileReader reader = new FileReader(jsonFilePath)) {
-            hotels = gson.fromJson(reader, hotelListType);
-            if (hotels == null) {
-                hotels = new ArrayList<>();
+            hotelsLock.writeLock().lock();
+            try {
+                hotels = gson.fromJson(reader, hotelListType);
+                if (hotels == null) {
+                    hotels = new ArrayList<>();
+                }
+            } finally {
+                hotelsLock.writeLock().unlock();
             }
         }
     }
+
     public boolean submitReview(String name, String city, double rate, int posizione, int pulizia, int servizio, int prezzo) {
-        Hotel hotel = searchHotelByNameAndCity(name, city);
-        if (hotel != null) {
-            hotel.submitReview(rate, posizione, pulizia, servizio, prezzo);
-            return true;
-        } else {
-            return false;
+        try {
+            Hotel hotel = searchHotelByNameAndCity(name, city);
+            hotelsLock.writeLock().lock();
+            if (hotel != null) {
+                hotel.submitReview(rate, posizione, pulizia, servizio, prezzo);
+                return true;
+            } else {
+                return false;
+            }
+        } finally {
+            hotelsLock.writeLock().unlock();
         }
     }
 
     public Hotel searchHotelByNameAndCity(String name, String city) {
-        for (Hotel hotel : hotels) {
-            if (hotel.getName().equalsIgnoreCase(name) && hotel.getCity().equalsIgnoreCase(city)) {
-                return hotel;
+        hotelsLock.readLock().lock();
+        try {
+            for (Hotel hotel : hotels) {
+                if (hotel.getName().equalsIgnoreCase(name) && hotel.getCity().equalsIgnoreCase(city)) {
+                    return hotel;
+                }
             }
+            return null;
+        } finally {
+            hotelsLock.readLock().unlock();
         }
-        return null;
     }
 
     public List<Hotel> searchHotelsByCity(String city) {
-        // Hotels are saved with capital first letter city string
+        //make sure received input is parsed to capital first letter
         String capitalizedCity = city.substring(0, 1).toUpperCase() + city.substring(1);
-        List<Hotel> cityHotels = rankedHotelsByCity.get(capitalizedCity);
-        if (cityHotels == null) {
-            return new ArrayList<>(); // Return an empty list if city is not found
+
+        rankedHotelsByCityLock.readLock().lock();
+        try {
+            List<Hotel> cityHotels = rankedHotelsByCity.get(capitalizedCity);
+            if (cityHotels == null) {
+                return new ArrayList<>();
+            }
+            return new ArrayList<>(cityHotels);
+        } finally {
+            rankedHotelsByCityLock.readLock().unlock();
         }
-        return new ArrayList<>(cityHotels);
     }
 
     private void saveHotelsToJson() {
         System.out.println("Saving hotel data to disk...");
+        hotelsLock.writeLock().lock();
         try (FileWriter writer = new FileWriter("updated_hotels.json")) {
             Gson gson = new Gson();
             gson.toJson(hotels, writer);
@@ -80,6 +107,8 @@ public class HotelManager {
         } catch (IOException e) {
             System.out.printf("Error while saving hotel data!");
             e.printStackTrace();
+        } finally {
+            hotelsLock.writeLock().unlock();
         }
     }
 
@@ -107,19 +136,22 @@ public class HotelManager {
         System.out.println("Updating Hotel Rankings...");
         Map<String, List<Hotel>> newRankings = getRankedHotelsByCity();
 
-        for (String city : newRankings.keySet()) {
-            List<Hotel> newCityRankings = newRankings.get(city);
-            List<Hotel> oldCityRankings = rankedHotelsByCity.get(city);
+        rankedHotelsByCityLock.writeLock().lock();
+        try {
+            for (String city : newRankings.keySet()) {
+                List<Hotel> newCityRankings = newRankings.get(city);
+                List<Hotel> oldCityRankings = rankedHotelsByCity.get(city);
 
-            if (!areRankingsEqual(newCityRankings, oldCityRankings)) {
-                rankedHotelsByCity.put(city, newCityRankings);
-                // RMI Callback
-                notifyRankingUpdate(city, newCityRankings);
-                // UDP Multicast
-                if (isFirstPositionChanged(newCityRankings, oldCityRankings)) {
-                    sendMulticastMessage(city, newCityRankings.get(0));
+                if (!areRankingsEqual(newCityRankings, oldCityRankings)) {
+                    rankedHotelsByCity.put(city, newCityRankings);
+                    notifyRankingUpdate(city, newCityRankings);
+                    if (hasFirstPositionChanged(newCityRankings, oldCityRankings)) {
+                        sendMulticastMessage(city, newCityRankings.get(0));
+                    }
                 }
             }
+        } finally {
+            rankedHotelsByCityLock.writeLock().unlock();
         }
 
         System.out.println("Hotel Rankings Updated!");
@@ -143,7 +175,7 @@ public class HotelManager {
         return true;
     }
 
-    private boolean isFirstPositionChanged(List<Hotel> newRankings, List<Hotel> oldRankings) {
+    private boolean hasFirstPositionChanged(List<Hotel> newRankings, List<Hotel> oldRankings) {
         if (oldRankings == null || oldRankings.isEmpty()) {
             return true;
         }
@@ -180,30 +212,25 @@ public class HotelManager {
     }
 
     public Map<String, List<Hotel>> getRankedHotelsByCity() {
-        // Initialize a TreeMap to hold the rankings by city (TreeMap keeps keys sorted)
-        Map<String, List<Hotel>> rankedHotelsByCity = new TreeMap<>();
+        Map<String, List<Hotel>> newRankedHotelsByCity = new TreeMap<>();
 
-        // Group hotels by city
-        for (Hotel hotel : hotels) {
-            String city = hotel.getCity();
-            rankedHotelsByCity
-                    .computeIfAbsent(city, k -> new ArrayList<>())
-                    .add(hotel);
+        hotelsLock.readLock().lock();
+        try {
+            for (Hotel hotel : hotels) {
+                String city = hotel.getCity();
+                newRankedHotelsByCity
+                        .computeIfAbsent(city, k -> new ArrayList<>())
+                        .add(hotel);
+            }
+        } finally {
+            hotelsLock.readLock().unlock();
         }
 
-        // Sort each city's hotels by their rate in descending order
-        for (String city : rankedHotelsByCity.keySet()) {
-            List<Hotel> hotelsInCity = rankedHotelsByCity.get(city);
+        for (String city : newRankedHotelsByCity.keySet()) {
+            List<Hotel> hotelsInCity = newRankedHotelsByCity.get(city);
             hotelsInCity.sort((h1, h2) -> Double.compare(h2.getLocalScore(), h1.getLocalScore()));
         }
 
-        return rankedHotelsByCity;
-    }
-
-    @Override
-    public String toString() {
-        return "HotelManager{" +
-                "hotels=" + hotels +
-                '}';
+        return newRankedHotelsByCity;
     }
 }

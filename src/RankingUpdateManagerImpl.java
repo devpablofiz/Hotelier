@@ -14,16 +14,21 @@ public class RankingUpdateManagerImpl extends UnicastRemoteObject implements Ran
 
     @Override
     public synchronized void registerListener(String city, RankingUpdateListener listener) throws RemoteException {
-        cityListeners.computeIfAbsent(city, k -> new ArrayList<>()).add(listener);
+        //make sure registered city has capital first letter as thats how we store them
+        String capitalizedCity = city.substring(0, 1).toUpperCase() + city.substring(1);
+        cityListeners.computeIfAbsent(capitalizedCity, k -> new ArrayList<>()).add(listener);
     }
 
     @Override
     public synchronized void removeListener(String city, RankingUpdateListener listener) throws RemoteException {
-        List<RankingUpdateListener> listeners = cityListeners.get(city);
+        //make sure registered city has capital first letter as thats how we store them
+        String capitalizedCity = city.substring(0, 1).toUpperCase() + city.substring(1);
+
+        List<RankingUpdateListener> listeners = cityListeners.get(capitalizedCity);
         if (listeners != null) {
             listeners.remove(listener);
             if (listeners.isEmpty()) {
-                cityListeners.remove(city);
+                cityListeners.remove(capitalizedCity);
             }
         }
     }

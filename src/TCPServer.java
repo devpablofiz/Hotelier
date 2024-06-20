@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TCPServer {
     private static final ExecutorService threadPool = Executors.newFixedThreadPool(10);
@@ -16,6 +17,9 @@ public class TCPServer {
     private static final String END_OF_RESPONSE = "END_OF_RESPONSE";
     private static final Map<Socket, String> loggedInUsers = new ConcurrentHashMap<>();
     private static final Map<String, Socket> userSockets = new ConcurrentHashMap<>();
+
+    private static final ReentrantReadWriteLock loggedInUsersLock = new ReentrantReadWriteLock();
+    private static final ReentrantReadWriteLock userSocketsLock = new ReentrantReadWriteLock();
 
     public static void start(UserRegisterImpl userRegister, HotelManager hotelManager, int tcpPort) throws Exception {
         TCPServer.userRegister = userRegister;
@@ -124,48 +128,62 @@ public class TCPServer {
         }
 
         private void cleanup() {
+            loggedInUsersLock.writeLock().lock();
+            userSocketsLock.writeLock().lock();
             try {
                 clientSocket.close();
+                String username = loggedInUsers.remove(clientSocket);
+                if (username != null) {
+                    userSockets.remove(username);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
-            }
-            String username = loggedInUsers.remove(clientSocket);
-            if (username != null) {
-                userSockets.remove(username);
+            } finally {
+                userSocketsLock.writeLock().unlock();
+                loggedInUsersLock.writeLock().unlock();
             }
         }
 
         private void handleShowMyBadges(PrintWriter out) {
-            String username = loggedInUsers.get(clientSocket);
-            if (username == null) {
-                out.println("User needs to be logged in to request badges");
+            loggedInUsersLock.readLock().lock();
+            try {
+                String username = loggedInUsers.get(clientSocket);
+                if (username == null) {
+                    out.println("User needs to be logged in to request badges");
+                    out.println(END_OF_RESPONSE);
+                    return;
+                }
+                String badge = userRegister.getUser(username).getBadge();
+                if (badge == null) {
+                    out.println("Submit at least one review to start collecting badges");
+                    out.println(END_OF_RESPONSE);
+                    return;
+                }
+                out.println(badge);
                 out.println(END_OF_RESPONSE);
-                return;
+            } finally {
+                loggedInUsersLock.readLock().unlock();
             }
-            String badge = userRegister.getUser(username).getBadge();
-            if (badge == null) {
-                out.println("Submit at least one review to start collecting badges");
-                out.println(END_OF_RESPONSE);
-                return;
-            }
-            out.println(badge);
-            out.println(END_OF_RESPONSE);
         }
 
         private void handleInsertReview(PrintWriter out, String hotelName, String city, int globalScore, int positionScore, int cleaningScore, int serviceScore, int priceScore) {
-            String username = loggedInUsers.get(clientSocket);
-            if (username == null) {
-                out.println("User needs to be logged in to insert a review");
+            loggedInUsersLock.readLock().lock();
+            try {
+                String username = loggedInUsers.get(clientSocket);
+                if (username == null) {
+                    out.println("User needs to be logged in to insert a review");
+                    out.println(END_OF_RESPONSE);
+                    return;
+                }
+                if (hotelManager.submitReview(hotelName, city, globalScore, positionScore, cleaningScore, serviceScore, priceScore)) {
+                    userRegister.getUser(username).incrementReviewCounter();
+                    out.println("Review added successfully");
+                } else {
+                    out.println("Hotel " + hotelName + " not found in " + city + "!");
+                }
                 out.println(END_OF_RESPONSE);
-                return;
-            }
-            if (hotelManager.submitReview(hotelName, city, globalScore, positionScore, cleaningScore, serviceScore, priceScore)) {
-                userRegister.getUser(username).incrementReviewCounter();
-                out.println("Review added successfully");
-                out.println(END_OF_RESPONSE);
-            } else {
-                out.println("Hotel " + hotelName + " not found in " + city + "!");
-                out.println(END_OF_RESPONSE);
+            } finally {
+                loggedInUsersLock.readLock().unlock();
             }
         }
 
@@ -197,36 +215,50 @@ public class TCPServer {
         }
 
         private void handleLogout(PrintWriter out, String username) {
-            if (!userSockets.containsKey(username)) {
-                out.println("User is not logged in");
+            userSocketsLock.writeLock().lock();
+            loggedInUsersLock.writeLock().lock();
+            try {
+                if (!userSockets.containsKey(username)) {
+                    out.println("User is not logged in");
+                    out.println(END_OF_RESPONSE);
+                    return;
+                }
+                if (!userSockets.get(username).equals(clientSocket)) {
+                    out.println("Socket not authenticated for this user");
+                    out.println(END_OF_RESPONSE);
+                    return;
+                }
+                String loggedUsername = loggedInUsers.remove(clientSocket);
+                if (loggedUsername != null) {
+                    userSockets.remove(loggedUsername);
+                }
+                out.println("Logout successful!");
                 out.println(END_OF_RESPONSE);
-                return;
+            } finally {
+                loggedInUsersLock.writeLock().unlock();
+                userSocketsLock.writeLock().unlock();
             }
-            if (!userSockets.get(username).equals(clientSocket)) {
-                out.println("Socket not authenticated for this user");
-                out.println(END_OF_RESPONSE);
-                return;
-            }
-            String loggedUsername = loggedInUsers.remove(clientSocket);
-            if (loggedUsername != null) {
-                userSockets.remove(loggedUsername);
-            }
-            out.println("Logout successful!");
-            out.println(END_OF_RESPONSE);
         }
 
-        private synchronized void handleLogin(PrintWriter out, String username, String password) {
-            if (userSockets.containsKey(username)) {
-                out.println("User already logged in");
-            } else {
-                String result = userRegister.validateUser(username, password);
-                if ("Login successful!".equals(result)) {
-                    loggedInUsers.put(clientSocket, username);
-                    userSockets.put(username, clientSocket);
+        private void handleLogin(PrintWriter out, String username, String password) {
+            userSocketsLock.writeLock().lock();
+            loggedInUsersLock.writeLock().lock();
+            try {
+                if (userSockets.containsKey(username)) {
+                    out.println("User already logged in");
+                } else {
+                    String result = userRegister.validateUser(username, password);
+                    if ("Login successful!".equals(result)) {
+                        loggedInUsers.put(clientSocket, username);
+                        userSockets.put(username, clientSocket);
+                    }
+                    out.println(result);
                 }
-                out.println(result);
+                out.println(END_OF_RESPONSE);
+            } finally {
+                loggedInUsersLock.writeLock().unlock();
+                userSocketsLock.writeLock().unlock();
             }
-            out.println(END_OF_RESPONSE);
         }
     }
 }

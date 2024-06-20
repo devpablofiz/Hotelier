@@ -42,8 +42,11 @@ public class ClientMain {
                         handleSubscribe(input, listener);
                     } else if (input.startsWith("unsubscribe(")) {
                         handleUnsubscribe(input, listener);
-                    } else if (input.startsWith("login(") || input.startsWith("logout(") ||
-                            input.startsWith("searchHotel(") || input.startsWith("searchAllHotels(") ||
+                    } else if (input.startsWith("login(")) {
+                        handleLogin(input, out, in);
+                    } else if (input.startsWith("logout(")) {
+                        handleLogout(input, out, in);
+                    } else if (input.startsWith("searchHotel(") || input.startsWith("searchAllHotels(") ||
                             input.startsWith("insertReview(") || input.startsWith("showMyBadges(")) {
                         handleTCPRequest(input, out, in);
                     } else {

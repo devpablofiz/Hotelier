@@ -22,7 +22,7 @@ public class UserRegisterImpl extends UnicastRemoteObject implements UserRegiste
 
     protected UserRegisterImpl(Properties properties) throws RemoteException {
         super();
-        this.jsonFilePath = properties.getProperty("json.file.path", "users.json");
+        this.jsonFilePath = properties.getProperty("users.json.file.path");
         this.users = new ConcurrentHashMap<>();
         loadUsersFromJson();
         long savePeriod = Long.parseLong(properties.getProperty("save.period", "30000")); // Default to 30 secs
@@ -69,7 +69,7 @@ public class UserRegisterImpl extends UnicastRemoteObject implements UserRegiste
 
     private void saveUsersToJson() {
         System.out.println("Saving user data to disk...");
-        lock.writeLock().lock();
+        lock.readLock().lock();
         try (FileWriter writer = new FileWriter(jsonFilePath)) {
             Gson gson = new Gson();
             gson.toJson(users, writer);
@@ -78,7 +78,7 @@ public class UserRegisterImpl extends UnicastRemoteObject implements UserRegiste
             System.out.println("Error while saving user data!");
             e.printStackTrace();
         } finally {
-            lock.writeLock().unlock();
+            lock.readLock().unlock();
         }
     }
 

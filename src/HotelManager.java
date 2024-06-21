@@ -100,7 +100,7 @@ public class HotelManager {
     private void saveHotelsToJson() {
         System.out.println("Saving hotel data to disk...");
         hotelsLock.writeLock().lock();
-        try (FileWriter writer = new FileWriter("updated_hotels.json")) {
+        try (FileWriter writer = new FileWriter("default_hotels.json")) {
             Gson gson = new Gson();
             gson.toJson(hotels, writer);
             System.out.println("Hotel data saved!");

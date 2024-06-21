@@ -17,7 +17,6 @@ public class TCPServer {
     private static final String END_OF_RESPONSE = "END_OF_RESPONSE";
     private static final Map<Socket, String> loggedInUsers = new ConcurrentHashMap<>();
     private static final Map<String, Socket> userSockets = new ConcurrentHashMap<>();
-
     private static final ReentrantReadWriteLock loggedInUsersLock = new ReentrantReadWriteLock();
     private static final ReentrantReadWriteLock userSocketsLock = new ReentrantReadWriteLock();
 
@@ -47,7 +46,9 @@ public class TCPServer {
                  PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
                 String command;
+
                 while ((command = in.readLine()) != null) {
+//                    System.out.println(command);
                     String[] parts = command.split("\\(", 2);
                     if (parts.length != 2) {
                         out.println("Invalid command format");
@@ -104,6 +105,9 @@ public class TCPServer {
                             int cleaningScore = Integer.parseInt(args[4]);
                             int serviceScore = Integer.parseInt(args[5]);
                             int priceScore = Integer.parseInt(args[6]);
+                            if (!isScoreValid(globalScore, positionScore, cleaningScore, serviceScore, priceScore, out)) {
+                                continue;
+                            }
                             handleInsertReview(out, args[0], args[1], globalScore, positionScore, cleaningScore, serviceScore, priceScore);
                             break;
                         case "showMyBadges":
@@ -125,6 +129,17 @@ public class TCPServer {
             } finally {
                 cleanup();
             }
+        }
+
+        private boolean isScoreValid(int globalScore, int positionScore, int cleaningScore, int serviceScore, int priceScore, PrintWriter out) {
+            if (globalScore < 1 || globalScore > 5 || positionScore < 1 || positionScore > 5 ||
+                    cleaningScore < 1 || cleaningScore > 5 || serviceScore < 1 ||
+                    serviceScore > 5 || priceScore < 1 || priceScore > 5) {
+                out.println("Invalid arguments format, scores must be between 1 and 5");
+                out.println(END_OF_RESPONSE);
+                return false;
+            }
+            return true;
         }
 
         private void cleanup() {
@@ -166,7 +181,8 @@ public class TCPServer {
             }
         }
 
-        private void handleInsertReview(PrintWriter out, String hotelName, String city, int globalScore, int positionScore, int cleaningScore, int serviceScore, int priceScore) {
+        private void handleInsertReview(PrintWriter out, String hotelName, String city, int globalScore,
+                                        int positionScore, int cleaningScore, int serviceScore, int priceScore) {
             loggedInUsersLock.readLock().lock();
             try {
                 String username = loggedInUsers.get(clientSocket);
@@ -249,8 +265,8 @@ public class TCPServer {
                 } else {
                     String result = userRegister.validateUser(username, password);
                     if ("Login successful!".equals(result)) {
-                        loggedInUsers.put(clientSocket, username);
-                        userSockets.put(username, clientSocket);
+                        loggedInUsers.putIfAbsent(clientSocket, username);
+                        userSockets.putIfAbsent(username, clientSocket);
                     }
                     out.println(result);
                 }

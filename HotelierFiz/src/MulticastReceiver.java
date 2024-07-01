@@ -3,6 +3,7 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 
+//simple class to listen for multicast messages in a group
 public class MulticastReceiver {
     private static final String MULTICAST_ADDRESS = "224.0.0.1";
     private static final int MULTICAST_PORT = 6789;

@@ -27,15 +27,20 @@ public class HotelManager {
         this.rankedHotelsByCity = new HashMap<>();
         this.multicastAddress = properties.getProperty("multicast.ip");
         this.multicastPort = Integer.parseInt(properties.getProperty("multicast.port"));
-        hotelsPath = properties.getProperty("hotels.json.file.path");
+        this.hotelsPath = properties.getProperty("hotels.json.file.path");
+
+        //load hotels and update rankings once when starting the service
         loadHotels(hotelsPath);
         updateRankings();
+
+        //schedule next updates and data saves
         long savePeriod = Long.parseLong(properties.getProperty("save.period"));
         long rankingUpdatePeriod = Long.parseLong(properties.getProperty("ranking.update.period"));
         schedulePeriodicSave(savePeriod);
         schedulePeriodicRankingUpdate(rankingUpdatePeriod);
     }
 
+    //loads hotels using gson
     private void loadHotels(String jsonFilePath) throws IOException {
         Gson gson = new Gson();
         Type hotelListType = new TypeToken<List<Hotel>>() {
@@ -98,6 +103,7 @@ public class HotelManager {
         }
     }
 
+    //save hotel data using gson
     private void saveHotelsToJson() {
         System.out.println("Saving hotel data to disk...");
         hotelsLock.readLock().lock();
@@ -139,13 +145,17 @@ public class HotelManager {
 
         rankedHotelsByCityLock.writeLock().lock();
         try {
+            //iterate all cities in the new ranking map
             for (String city : newRankings.keySet()) {
                 List<Hotel> newCityRankings = newRankings.get(city);
                 List<Hotel> oldCityRankings = rankedHotelsByCity.get(city);
 
+                //check if the lists have the same elements in the same order
                 if (!areRankingsEqual(newCityRankings, oldCityRankings)) {
+                    //update the manager's map
                     rankedHotelsByCity.put(city, newCityRankings);
                     notifyRankingUpdate(city, newCityRankings);
+                    //check if the hotel in first position changed
                     if (hasFirstPositionChanged(newCityRankings, oldCityRankings)) {
                         sendMulticastMessage(city, newCityRankings.get(0));
                     }
@@ -154,7 +164,6 @@ public class HotelManager {
         } finally {
             rankedHotelsByCityLock.writeLock().unlock();
         }
-
         System.out.println("Hotel Rankings Updated!");
     }
 
@@ -216,11 +225,12 @@ public class HotelManager {
         Map<String, List<Hotel>> newRankedHotelsByCity = new HashMap<>();
 
         hotelsLock.readLock().lock();
-        //build the city -> hotels list map
         try {
+            //build map such that city -> list of it's hotels
             for (Hotel hotel : hotels) {
                 String city = hotel.getCity();
                 newRankedHotelsByCity
+                        //add a new city to the map only if its the first time matching it
                         .computeIfAbsent(city, k -> new ArrayList<>())
                         .add(hotel);
             }

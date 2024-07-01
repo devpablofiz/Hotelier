@@ -17,7 +17,7 @@ public class RankingUpdateListenerImpl extends UnicastRemoteObject implements Ra
         updateRankings(city, message);
     }
 
-    private void updateRankings(String city, String message) {
+    private synchronized void updateRankings(String city, String message) {
         //clear the current rankings for the city
         Map<Integer, String> cityRankings = new HashMap<>();
 
@@ -32,9 +32,6 @@ public class RankingUpdateListenerImpl extends UnicastRemoteObject implements Ra
             }
         }
 
-        //update the rankings map
-        synchronized (rankings) {
-            rankings.put(city, cityRankings);
-        }
+        rankings.put(city, cityRankings);
     }
 }

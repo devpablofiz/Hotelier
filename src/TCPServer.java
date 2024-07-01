@@ -60,6 +60,7 @@ public class TCPServer {
                     String cmd = parts[0];
                     String[] args = parts[1].replace(")", "").split(",");
 
+                    //switch over the possible operations
                     switch (cmd) {
                         case "login":
                             if (args.length != 2) {
